@@ -19,31 +19,6 @@ import torch
 import yaml
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
-
-# take args: input_dir output_dir
-parser = ArgumentParser()
-parser.add_argument(
-    "-i",
-    "--input_dir",
-    type=str,
-    required=True,
-)
-parser.add_argument(
-    "-o",
-    "--output_dir",
-    type=str,
-    required=True,
-)
-parser = grok.training.add_args(parser)
-args = parser.parse_args()
-print(args, flush=True)
-
-if torch.cuda.is_available():
-    device = "cuda"
-else:
-    device = "cpu"
-
 
 def load_expt_metrics(
     expt_dir,
@@ -53,7 +28,8 @@ def load_expt_metrics(
     args = deepcopy(args)
 
     # load the hparams for this experiment
-    with open(f"{expt_dir}/default/version_0/hparams.yaml", "r") as fh:
+    # with open(f"{expt_dir}/default/version_0/hparams.yaml", "r") as fh:
+    with open(f"{expt_dir}/hparams.yaml", "r") as fh:
         hparams_dict = yaml.safe_load(fh)
 
     for k, v in hparams_dict.items():
@@ -74,7 +50,8 @@ def load_expt_metrics(
         "learning_rate": [],
     }
 
-    with open(f"{expt_dir}/default/version_0/metrics.csv", "r") as fh:
+    # with open(f"{expt_dir}/default/version_0/metrics.csv", "r") as fh:
+    with open(f"{expt_dir}/metrics.csv", "r") as fh:
         for row in csv.DictReader(fh):
             if row["train_loss"] != "":
                 for k in train_data:
@@ -92,7 +69,8 @@ def load_expt_metrics(
                     val_data[k].append(v)
 
     return {
-        "hparams": hparams_dict,
+        # "hparams": hparams_dict,
+        "hparams": vars(args),
         "train": train_data,
         "val": val_data,
         # "raw": raw_data,
@@ -101,7 +79,7 @@ def load_expt_metrics(
 
 def load_run_metrics(
     run_dir,
-    args=args,
+    args,
 ):
     """load all the metrics for a collection of experiments with the same architecture
     across various amounts of training data"""
@@ -118,6 +96,12 @@ def load_run_metrics(
             pass
     return metric_data
 
+def load_run_metrics_single(
+    run_dir,
+    args,
+):
+    expt_data = load_expt_metrics(run_dir, args)
+    return {0: expt_data}
 
 def add_metric_graph(
     fig,
@@ -244,7 +228,7 @@ def create_loss_curves(
     operation,
     # epochs,
     most_interesting_only=False,
-    image_dir=args.output_dir,
+    image_dir=None,
     by="step",
     max_increment=0,
     cmap="viridis",
@@ -335,7 +319,7 @@ def create_max_accuracy_curves(
     operation,
     by="step",
     max_increment=0,
-    image_dir=args.output_dir,
+    image_dir=None,
 ):
     scales = {
         "x": "linear",
@@ -383,7 +367,7 @@ def create_tsne_graphs(
     operation,
     expt,
     run_dir,
-    image_dir=args.output_dir,
+    image_dir,
 ):
 
     saved_pt_dir = f"{run_dir}/activations"
@@ -457,54 +441,89 @@ def get_max_epochs(metric_data):
     return hparams["max_epochs"]
 
 
-rundir = args.input_dir
+if __name__ == "__main__":
 
-try:
-    metric_data = load_run_metrics(rundir, args)
-    arch = get_arch(metric_data)
-    operation = get_operation(metric_data)
-    max_epochs = get_max_epochs(metric_data)
+    logger = logging.getLogger(__name__)
 
-    for by in ["step", "epoch"]:
-        create_loss_curves(metric_data, arch, operation, by=by)
-
-    by = "epoch"
-    last_i = -1
-    for i in sorted(list(set(2 ** (np.arange(167) / 10)))):
-        if i > max_epochs:
-            break
-        i = int(round(i))
-        create_max_accuracy_curves(
-            metric_data,
-            arch,
-            operation,
-            by=by,
-            max_increment=i,
-        )
-
-    # make a video
-    in_files = os.path.join(
-        args.output_dir,
-        "max_accuracy",
-        f"{operation}_max_accuracy_{arch}_upto_%*.png",
-    )
-    out_file = os.path.join(args.output_dir, f"{operation}_{arch}_max_accuracy.mp4")
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-r",
-        "16",
+    # take args: input_dir output_dir
+    parser = ArgumentParser()
+    parser.add_argument(
         "-i",
-        in_files,
-        "-vcodec",
-        "libx264",
-        "-crf",
-        "25",
-        "-pix_fmt",
-        "yuv420p",
-        out_file,
-    ]
-    subprocess.check_call(cmd)
+        "--input_dir",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type=str,
+        required=True,
+    )
+    parser = grok.training.add_args(parser)
+    args = parser.parse_args()
+    print(args, flush=True)
 
-except BaseException as e:
-    print(f"{rundir} failed: {e}")
+    if torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+        
+    rundir = args.input_dir
+
+    try:
+        # metric_data = load_run_metrics(rundir, args)
+        print(f"Loading {rundir}")
+        metric_data = load_run_metrics_single(rundir, args)
+        print(f"Loaded {rundir}")
+        arch = get_arch(metric_data)
+        print(f"arch = {arch}")
+        operation = get_operation(metric_data)
+        print(f"operation = {operation}")
+        max_epochs = get_max_epochs(metric_data)
+        print(f"max_epochs = {max_epochs}")
+
+        for by in ["step", "epoch"]:
+            print(f"Creating loss curves by {by}")
+            create_loss_curves(metric_data, arch, operation, image_dir=args.output_dir, by=by)
+
+        by = "epoch"
+        last_i = -1
+        for i in sorted(list(set(2 ** (np.arange(167) / 10)))):
+            if i > max_epochs:
+                break
+            i = int(round(i))
+            create_max_accuracy_curves(
+                metric_data,
+                arch,
+                operation,
+                by=by,
+                max_increment=i,
+                image_dir=args.output_dir,
+            )
+
+        # make a video
+        in_files = os.path.join(
+            args.output_dir,
+            "max_accuracy",
+            f"{operation}_max_accuracy_{arch}_upto_%*.png",
+        )
+        out_file = os.path.join(args.output_dir, f"{operation}_{arch}_max_accuracy.mp4")
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-r",
+            "16",
+            "-i",
+            in_files,
+            "-vcodec",
+            "libx264",
+            "-crf",
+            "25",
+            "-pix_fmt",
+            "yuv420p",
+            out_file,
+        ]
+        subprocess.check_call(cmd)
+
+    except BaseException as e:
+        print(f"{rundir} failed: {e}")

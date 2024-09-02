@@ -98,15 +98,15 @@ class TrainableTransformer(LightningModule):
         parser.add_argument("--non_linearity", type=str, default="relu")
         parser.add_argument("--max_context_len", type=int, default=50)
 
-        # parser.add_argument("--math_operator", type=str, default="+")
-        parser.add_argument("--math_operator", type=str, default="x**2+y**2+x*y_mod_97")
+        parser.add_argument("--math_operator", type=str, default="+")
+        # parser.add_argument("--math_operator", type=str, default="x**2+y**2+x*y_mod_97")
         parser.add_argument(
             "--operand_length",
             type=int,
             help="for list operations, the length of the lists",
         )
 
-        parser.add_argument("--train_data_pct", type=float, default=5)
+        parser.add_argument("--train_data_pct", type=float, default=50)
         parser.add_argument("--warmup_steps", type=int, default=10)
         parser.add_argument("--anneal_lr_steps", type=int, default=100000)
         parser.add_argument("--anneal_lr", dest="anneal_lr", action="store_true")
@@ -917,7 +917,7 @@ def add_args(parser=None) -> Namespace:
     if parser is None:
         parser = ArgumentParser()
     parser.add_argument("--random_seed", type=int, default=-1)
-    parser.add_argument("--gpu", type=int, default=1)
+    parser.add_argument("--gpu", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=None)
     parser.add_argument("--max_steps", type=int, default=100000)
     # parser.add_argument("--checkpoint_period", type=int, default=1)
