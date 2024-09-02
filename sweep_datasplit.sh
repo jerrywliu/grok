@@ -19,7 +19,7 @@ for ratio in $split_ratios; do
             if ! screen -list | grep -q "gpu${gpu}"; then
                 # Make sure the log directory exists
                 mkdir -p ${logdir}/${ratio}
-                full_cmd="source $(conda info --base)/etc/profile.d/conda.sh && conda activate grok-openai && CUDA_VISIBLE_DEVICES=${gpu} ${cmd} --train_data_pct ${ratio} --logdir ${logdir}/${ratio} && exit"
+                full_cmd="source $(conda info --base)/etc/profile.d/conda.sh && conda activate grok-openai && ${cmd} --gpu ${gpu} --train_data_pct ${ratio} --logdir ${logdir}/${ratio} && exit"
                 screen -dmS "gpu${gpu}_task_${ratio}" bash -c "${full_cmd}"
                 echo "Started job with split_ratio ${ratio} on GPU ${gpu} in screen session gpu${gpu}_task_${ratio}"
                 sleep 1  # Small delay to avoid potential race conditions

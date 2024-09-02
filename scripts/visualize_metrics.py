@@ -24,12 +24,14 @@ def load_expt_metrics(
     expt_dir,
     args,
 ):
+    print(f"load_expt_metrics(): loading {expt_dir}")
+
     """load the metrics for one experiment"""
     args = deepcopy(args)
 
     # load the hparams for this experiment
-    # with open(f"{expt_dir}/default/version_0/hparams.yaml", "r") as fh:
-    with open(f"{expt_dir}/hparams.yaml", "r") as fh:
+    with open(f"{expt_dir}/lightning_logs/version_0/hparams.yaml", "r") as fh:
+    # with open(f"{expt_dir}/hparams.yaml", "r") as fh:
         hparams_dict = yaml.safe_load(fh)
 
     for k, v in hparams_dict.items():
@@ -50,8 +52,8 @@ def load_expt_metrics(
         "learning_rate": [],
     }
 
-    # with open(f"{expt_dir}/default/version_0/metrics.csv", "r") as fh:
-    with open(f"{expt_dir}/metrics.csv", "r") as fh:
+    with open(f"{expt_dir}/lightning_logs/version_0/metrics.csv", "r") as fh:
+    # with open(f"{expt_dir}/metrics.csv", "r") as fh:
         for row in csv.DictReader(fh):
             if row["train_loss"] != "":
                 for k in train_data:
@@ -89,8 +91,10 @@ def load_run_metrics(
     _, expt_dirs, _ = next(os.walk(run_dir))
     for expt_dir in tqdm(expt_dirs, unit="expt"):
         try:
+            print(f"load_run_metrics(): loading {run_dir}/{expt_dir}")
             expt_data = load_expt_metrics(f"{run_dir}/{expt_dir}", args)
-            train_data_pct = expt_data["hparams"]["train_data_pct"]
+            # train_data_pct = expt_data["hparams"]["train_data_pct"]
+            train_data_pct = expt_dir.split("/")[-1]
             metric_data[train_data_pct] = expt_data
         except FileNotFoundError:
             pass
@@ -463,6 +467,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args, flush=True)
 
+    # Make output directory if it doesn't exist
+    os.makedirs(args.output_dir, exist_ok=True)
+
     if torch.cuda.is_available():
         device = "cuda"
     else:
@@ -471,9 +478,9 @@ if __name__ == "__main__":
     rundir = args.input_dir
 
     try:
-        # metric_data = load_run_metrics(rundir, args)
         print(f"Loading {rundir}")
-        metric_data = load_run_metrics_single(rundir, args)
+        metric_data = load_run_metrics(rundir, args)
+        # metric_data = load_run_metrics_single(rundir, args)
         print(f"Loaded {rundir}")
         arch = get_arch(metric_data)
         print(f"arch = {arch}")
@@ -481,6 +488,26 @@ if __name__ == "__main__":
         print(f"operation = {operation}")
         max_epochs = get_max_epochs(metric_data)
         print(f"max_epochs = {max_epochs}")
+
+        for key in metric_data:
+            print(f"{key}: {metric_data[key].keys()}")
+
+        # Manually create a plot: max val accuracy vs % of data trained on
+        plt.scatter(
+            [int(k) for k in metric_data.keys()],
+            [max(metric_data[k]["val"]["val_accuracy"]) for k in metric_data.keys()],
+            label="val_accuracy",
+        )
+        plt.scatter(
+            [int(k) for k in metric_data.keys()],
+            [max(metric_data[k]["train"]["train_accuracy"]) for k in metric_data.keys()],
+            label="train_accuracy",
+        )
+        plt.xlabel("% of data trained on")
+        plt.ylabel("accuracy")
+        plt.legend()
+        plt.title(f"$x^2 + xy + y^2$")
+        plt.savefig(f"{args.output_dir}/datasplit.png")
 
         for by in ["step", "epoch"]:
             print(f"Creating loss curves by {by}")
