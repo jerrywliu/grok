@@ -98,7 +98,8 @@ class TrainableTransformer(LightningModule):
         parser.add_argument("--non_linearity", type=str, default="relu")
         parser.add_argument("--max_context_len", type=int, default=50)
 
-        parser.add_argument("--math_operator", type=str, default="+")
+        # parser.add_argument("--math_operator", type=str, default="+")
+        parser.add_argument("--math_operator", type=str, default="x**2+y**2+x*y_mod_97")
         parser.add_argument(
             "--operand_length",
             type=int,
@@ -156,6 +157,7 @@ class TrainableTransformer(LightningModule):
 
         :returns: an iterator for self.train_dataset
         """
+        # print(f"\nDebugging train_dataloader(): Configuring train_dataloader for epoch {self.current_epoch}")
         device = self.transformer.embedding.weight.device
         iterator = ArithmeticIterator(
             self.train_dataset,
@@ -164,7 +166,7 @@ class TrainableTransformer(LightningModule):
         )
         self.train_batchsize = iterator.batchsize
         self.batches_per_epoch = len(iterator)
-
+        # print(f"\nDebugging train_dataloader(): Batch size for epoch {self.current_epoch}: {self.train_batchsize}, batches per epoch: {self.batches_per_epoch}")
         return iterator
 
     def val_dataloader(self) -> ArithmeticIterator:  # type: ignore
@@ -455,6 +457,7 @@ class TrainableTransformer(LightningModule):
         :returns: a dict with loss, accuracy, lr, probabilities of solutions,
                   attentions, and values
         """
+        # print(f"\nStarting training_step for epoch {self.current_epoch}, batch {batch_idx}, len of batch: {len(batch)}")
         if batch_idx == 0:
             self.training_epoch_start_time = time.time()
             self.fwd_time_in_epoch = 0
@@ -469,12 +472,16 @@ class TrainableTransformer(LightningModule):
         # print(self.trainer.lr_scheduler_configs[0])
         # schedulers = self.trainer.lr_schedulers[0]
         schedulers = self.trainer.lr_scheduler_configs[0]
+
+        """
         if self.current_epoch != self.next_train_epoch_to_log:
             output = {
                 "loss": loss,
             }
             self.train_outputs.append(output)
             return output
+        """
+
         # lr = schedulers["scheduler"].optimizer.param_groups[0]["lr"]
         lr = schedulers.scheduler.optimizer.param_groups[0]["lr"]
         output = {
@@ -490,9 +497,10 @@ class TrainableTransformer(LightningModule):
             output["x_lhs"] = x_lhs
 
         self.train_outputs.append(output)
+        # print(f"\nlen of self.train_outputs: {len(self.train_outputs)}")
         return output
 
-    def on_training_epoch_end(self):
+    def on_train_epoch_end(self):
         """
         Used by pytorch_lightning
         Accumulates results of all forward training passes in this epoch
@@ -502,10 +510,13 @@ class TrainableTransformer(LightningModule):
         :returns: a dict with loss, accuracy, lr, probabilities of solutions,
                   attentions, and values
         """
+        # print(f"\nStarting on_train_epoch_end for epoch: {self.current_epoch}")
 
         outputs = self.train_outputs
 
         epoch_is_to_be_logged = self.current_epoch == self.next_train_epoch_to_log
+        # print(f"current epoch: {self.current_epoch}, next_train_epoch_to_log: {self.next_train_epoch_to_log}, epoch_is_to_be_logged: {epoch_is_to_be_logged}")
+
         if epoch_is_to_be_logged:
             self.next_train_epoch_to_log = max(
                 int(1.01 * self.next_train_epoch_to_log),
@@ -782,7 +793,7 @@ def train(hparams: Namespace) -> None:
         "max_steps": hparams.max_steps,
         "min_steps": hparams.max_steps,
         # "max_epochs": int(1e8),
-        "max_epochs": int(1e3),
+        "max_epochs": int(1e5),
         "val_check_interval": 1,
         "profiler": False,
         # "checkpoint_callback": checkpointer,
@@ -796,7 +807,7 @@ def train(hparams: Namespace) -> None:
     trainer = Trainer(**trainer_args)
 
     trainer.fit(model=model)  # type: ignore
-    # """
+    """
     margin = np.percentile(model.margin.detach().cpu().numpy(), 5)
     device = transformer.embedding.weight.device
     measures, bounds = metrics.calculate(
@@ -814,7 +825,7 @@ def train(hparams: Namespace) -> None:
         json.dump(measures, fh)
     with open(bounds_file, "w") as fh:
         json.dump(bounds, fh)
-    # """
+    """
     return hparams.logdir
 
 
@@ -906,7 +917,7 @@ def add_args(parser=None) -> Namespace:
     if parser is None:
         parser = ArgumentParser()
     parser.add_argument("--random_seed", type=int, default=-1)
-    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--gpu", type=int, default=1)
     parser.add_argument("--max_epochs", type=int, default=None)
     parser.add_argument("--max_steps", type=int, default=100000)
     # parser.add_argument("--checkpoint_period", type=int, default=1)

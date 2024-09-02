@@ -412,6 +412,7 @@ class ArithmeticIterator(torch.utils.data.IterableDataset):
         self.batchsize = self.calculate_batchsize(
             len(dataset), batchsize_hint=batchsize_hint
         )
+        # print(f"\nDebugging ArithmeticIterator.__iter__(): Initializing iterator with batchsize {self.batchsize}")
         self.device = device
         self.reset_iteration(shuffle=shuffle)
 
@@ -460,11 +461,14 @@ class ArithmeticIterator(torch.utils.data.IterableDataset):
         :raises: StopIteration when we're out of data
         :returns: batch tensor of shape (self.batchsize, tokens_per_eq)
         """
-
+        # print(f"\nDebugging ArithmeticIterator.__next__(): Getting batch {self.index + 1} of {len(self.dataset) // self.batchsize}, batchsize {self.batchsize}, dataset length {len(self.dataset)}")
         batch_begin = self.index * self.batchsize
         if batch_begin > len(self.dataset) - 1:
             self.reset_iteration()
-            raise StopIteration
+            # raise StopIteration
+            # JL 9/1/24: StopIteration was causing an issue with Lightning where Lightning would start a new epoch whenever the iterator was exhausted, but the iterator was not being reset until the first call of the new epoch. As such, every other epoch would have no data. This hack fixes the issue, but makes it so that the first batch of each epoch will have self.index = len(self.dataset) // self.batchsize, which is not ideal.
+            self.index = 0
+            batch_begin = 0
         indices = self.permutation[batch_begin : batch_begin + self.batchsize]
         text = self.dataset.data[indices, :-1]
         target = self.dataset.data[indices, 1:]
