@@ -47,8 +47,10 @@ class TrainableTransformer(LightningModule):
                         self.add_model_specific_args().
         """
         super().__init__()
-        for key in hparams.__dict__:
-            self.hparams.__dict__[key] = hparams.__dict__[key]
+        # hparams = Namespace
+        for key in vars(hparams):
+            setattr(self.hparams, key, vars(hparams)[key])
+        print(f"self.hparams: {self.hparams}")
         self.prepare_data()
 
         self.transformer = Transformer(
@@ -146,11 +148,13 @@ class TrainableTransformer(LightningModule):
         Loads training data to self.train_dataset
         Loads validation data to self.val_dataset
         """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         (self.train_dataset, self.val_dataset,) = ArithmeticDataset.splits(
             train_pct=self.hparams.train_data_pct,  # type: ignore
             operator=self.hparams.math_operator,  # type: ignore
             operand_length=self.hparams.operand_length,  # type: ignore
             data_dir=self.hparams.datadir,  # type: ignore
+            device=device,
         )
 
     def train_dataloader(self) -> ArithmeticIterator:  # type: ignore

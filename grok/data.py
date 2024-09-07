@@ -71,15 +71,17 @@ class ArithmeticTokenizer:
 
     token_file = "tokens.txt"
 
-    def __init__(self, data_dir=DEFAULT_DATA_DIR) -> None:
+    def __init__(self, data_dir=DEFAULT_DATA_DIR, device=torch.device("cuda")) -> None:
         self.token_file = bf.join(data_dir, self.token_file)
 
         self.itos = self.get_tokens()
 
         self.stoi: Dict[str, int] = dict([(s, i) for i, s in enumerate(self.itos)])
 
+        self.device = device
+
     def _encode(self, s: str) -> Tensor:
-        return LongTensor([self.stoi[t] for t in s.split(" ")])
+        return LongTensor([self.stoi[t] for t in s.split(" ")]).to(self.device)
 
     def encode(self, obj: Union[str, List]) -> Tensor:
         """
@@ -142,6 +144,7 @@ class ArithmeticDataset:
         operator: str,
         operand_length: Optional[int] = None,
         data_dir: str = DEFAULT_DATA_DIR,
+        device: torch.device = torch.device("cuda"),
     ):
         """
         Creates training and validation datasets
@@ -159,8 +162,8 @@ class ArithmeticDataset:
 
         train_rows, _ = cls.calc_split_len(train_pct, len(eqs))
 
-        train_ds = cls(ds_name, eqs[:train_rows], train=True, data_dir=data_dir)
-        val_ds = cls(ds_name, eqs[train_rows:], train=False, data_dir=data_dir)
+        train_ds = cls(ds_name, eqs[:train_rows], train=True, data_dir=data_dir, device=device)
+        val_ds = cls(ds_name, eqs[train_rows:], train=False, data_dir=data_dir, device=device)
 
         return train_ds, val_ds
 
@@ -170,11 +173,11 @@ class ArithmeticDataset:
         val_rows = ds_len - train_rows
         return train_rows, val_rows
 
-    def __init__(self, name, data: Union[Tensor, List[str]], train, data_dir) -> None:
+    def __init__(self, name, data: Union[Tensor, List[str]], train, data_dir, device=torch.device("cuda")) -> None:
         """
         :param data: A list of equations strings. Each equation must have an '=' in it.
         """
-        self.tokenizer = ArithmeticTokenizer(data_dir)
+        self.tokenizer = ArithmeticTokenizer(data_dir, device)
         self.name = name
         self.train = train
         if isinstance(data, list):
