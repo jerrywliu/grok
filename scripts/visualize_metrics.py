@@ -32,7 +32,8 @@ def load_expt_metrics(
     # load the hparams for this experiment
     with open(f"{expt_dir}/lightning_logs/version_0/hparams.yaml", "r") as fh:
     # with open(f"{expt_dir}/hparams.yaml", "r") as fh:
-        hparams_dict = yaml.safe_load(fh)
+        # hparams_dict = yaml.safe_load(fh)
+        hparams_dict = yaml.unsafe_load(fh)
 
     for k, v in hparams_dict.items():
         setattr(args, k, v)
