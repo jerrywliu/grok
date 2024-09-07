@@ -71,6 +71,8 @@ class TrainableTransformer(LightningModule):
         self.val_outputs = []
         self.test_outputs = []
 
+        self.save_hyperparameters()
+
     @staticmethod
     def add_model_specific_args(parser: ArgumentParser) -> ArgumentParser:
         """
