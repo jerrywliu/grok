@@ -38,6 +38,11 @@ def load_expt_metrics(
     for k, v in hparams_dict.items():
         setattr(args, k, v)
 
+    # Somehow hparam_dict has an attribute "hparams" which is a correct version of the hparams: use them to overwrite
+    true_hparams = hparams_dict["hparams"] # Namespace
+    for k, v in vars(true_hparams).items():
+        setattr(args, k, v)
+
     # load the summarized validation and training data for every epoch
     val_data = {
         "step": [],
@@ -507,13 +512,15 @@ if __name__ == "__main__":
         plt.xlabel("% of data trained on")
         plt.ylabel("accuracy")
         plt.legend()
-        plt.title(f"$x^2 + xy + y^2$")
+        plt.title(f"$x^2 + xy + y^2 + x$")
         plt.savefig(f"{args.output_dir}/datasplit.png")
 
         for by in ["step", "epoch"]:
             print(f"Creating loss curves by {by}")
             create_loss_curves(metric_data, arch, operation, image_dir=args.output_dir, by=by)
 
+        # Create max accuracy curves by epoch
+        """
         by = "epoch"
         last_i = -1
         for i in sorted(list(set(2 ** (np.arange(167) / 10)))):
@@ -528,6 +535,7 @@ if __name__ == "__main__":
                 max_increment=i,
                 image_dir=args.output_dir,
             )
+        """
 
         # make a video
         in_files = os.path.join(
