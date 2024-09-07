@@ -136,16 +136,16 @@ def add_metric_graph(
     total_plots = 0
     logger.debug(f"processing {metric}")
     plots = []
-    T = list(sorted(metric_data.keys()))
+    T = list(sorted([int(k) for k in metric_data.keys()]))
     T_max = int(T[-1])
     T_min = int(T[0])
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=T[0], vmax=T[-1]))
     colors = sm.to_rgba(T)
     for i, t in enumerate(T):
         if "val" in metric:
-            this_data = metric_data[t]["val"]
+            this_data = metric_data[str(t)]["val"]
         else:
-            this_data = metric_data[t]["train"]
+            this_data = metric_data[str(t)]["train"]
 
         X = this_data[by]
         Y = this_data[metric]
@@ -201,15 +201,15 @@ def add_max_accuracy_graph(
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
     ax.xaxis.set_major_formatter(mtick.PercentFormatter())
 
-    T = list(sorted(metric_data.keys()))
+    T = list(sorted([int(k) for k in metric_data.keys()]))
     T_max = int(T[-1])
     T_min = int(T[0])
     Y = []
     for i, t in enumerate(T):
         if "val" in metric:
-            this_data = metric_data[t]["val"]
+            this_data = metric_data[str(t)]["val"]
         else:
-            this_data = metric_data[t]["train"]
+            this_data = metric_data[str(t)]["train"]
         X = this_data[by]
         if max_increment > 0:
             X = [x for x in X if x <= max_increment]
@@ -305,7 +305,7 @@ def create_loss_curves(
     )
     fig.suptitle(f"{operation} {arch} {max_increment:06d} {by}s")
     fig.tight_layout()
-
+    
     img_file = f"{image_dir}/loss_curves/{operation}_loss_curves_{arch}__upto_{max_increment:010d}_{by}"
     if most_interesting_only:
         img_file += "_most_interesting"
