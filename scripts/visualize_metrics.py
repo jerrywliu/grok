@@ -448,7 +448,7 @@ def get_operation(metric_data):
 def get_max_epochs(metric_data):
     k = list(metric_data.keys())[0]
     hparams = metric_data[k]["hparams"]
-    return hparams["max_epochs"]
+    return hparams["max_epochs"] if hparams["max_epochs"] else hparams["max_steps"]
 
 
 if __name__ == "__main__":
@@ -520,7 +520,6 @@ if __name__ == "__main__":
             create_loss_curves(metric_data, arch, operation, image_dir=args.output_dir, by=by)
 
         # Create max accuracy curves by epoch
-        """
         by = "epoch"
         last_i = -1
         for i in sorted(list(set(2 ** (np.arange(167) / 10)))):
@@ -535,7 +534,6 @@ if __name__ == "__main__":
                 max_increment=i,
                 image_dir=args.output_dir,
             )
-        """
 
         # make a video
         in_files = os.path.join(

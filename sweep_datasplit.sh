@@ -5,8 +5,9 @@ split_ratios=$(seq 95 -5 10)
 gpus=(0 1 2 3)
 
 # Sweep args
-math_operator="x**2+y**2+x*y_mod_97"
-random_seed=3
+# math_operator="x**2+y**2+x*y_mod_97"
+math_operator="x**2+y**2+x*y+x_mod_97"
+random_seed=4
 max_steps=500000
 
 cmd="./scripts/train.py --random_seed ${random_seed} --math_operator ${math_operator}"
